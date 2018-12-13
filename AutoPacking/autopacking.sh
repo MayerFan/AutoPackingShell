@@ -86,7 +86,6 @@ __ERROR_MESSAGE_RIGHT=" ! ! ! \033[0m"
 __RETURN_VALUE=""
 
 # ************************* 配置区 ********************************
-
 # 1. 配置Target(如果没有多个target，建议忽略写死target)
 options=("1.ZTExchange" "2.Test")
 Read_user_input "请选择Target：" $options
@@ -161,11 +160,10 @@ Log "配置完成，开始打包===😁😁😁"
 sleep 0.5
 
 # =============================== 自动打包区 =============================
-
 Log "使用打包文件plist路径=${ExportOptionsPlistPath}"
 
 # 打包计时
-__CONSUME_TIME=0
+__START_SECONDS=`date +%s`
 # 回退到工程目录
 cd ../
 __PROGECT_PATH=`pwd`
@@ -175,12 +173,8 @@ Log "进入工程目录=${__PROGECT_PATH}"
 # 获取项目名称
 __PROJECT_NAME=`find . -name *.xcodeproj | awk -F "[/.]" '{print $(NF-1)}'`
 
-# 已经指定Target的Info.plist文件路径 【配置Info.plist的名称】
-__CURRENT_INFO_PLIST_NAME="Info.plist"
-# 获取 Info.plist 路径  【配置Info.plist的路径】
-__CURRENT_INFO_PLIST_PATH="${__PROJECT_NAME}/${__CURRENT_INFO_PLIST_NAME}"
-# 当前的plist文件路径
-Log "当前Info.plist路径= ${__CURRENT_INFO_PLIST_PATH}"
+# 获取 Info.plist 路径
+__CURRENT_INFO_PLIST_PATH="${__PROJECT_NAME}/Info.plist"
 
 # 获取版本号
 __BUNDLE_VERSION=`/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" ${__CURRENT_INFO_PLIST_PATH}`
@@ -208,18 +202,13 @@ __EXPORT_IPA_PATH="${__EXPORT_PATH}"
 # 获取时间 如:201706011145
 __CURRENT_DATE="$(date +%Y%m%d%H%M%S)"
 # ipa 名字
-__IPA_NAME="${__IPA_NEW_NAME}_V${__BUNDLE_BUILD_VERSION}_${__CURRENT_DATE}"
+__IPA_NAME="${__IPA_NEW_NAME}_V${__BUNDLE_VERSION}_${__CURRENT_DATE}"
 
 Log "打包APP名字=${__IPA_NAME}"
-
-# 修改编辑版本
-#__SET_BUNDLE_BUILD_VERSION="${__BUNDLE_BUILD_VERSION}.${__CURRENT_DATE}"
-#/usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${__SET_BUNDLE_BUILD_VERSION}" "${__CURRENT_INFO_PLIST_PATH}"
-
 Log "开始构建项目"
 
 if ${__IS_WORKSPACE} ; then
-    Log "您选择了以 xcworkspace-${__BUILD_CONFIGURATION} 模式打包"
+    Log "您选择了以 xcworkspace-${__BUILD_CONFIGURATION} 模式打 -${__BUILD_METHOD}- 包"
 
     # step 1. Clean
     xcodebuild clean  -workspace ${__PROJECT_NAME}.xcworkspace \
@@ -231,12 +220,12 @@ if ${__IS_WORKSPACE} ; then
     -scheme ${__SCHEME_NAME} \
     -configuration ${__BUILD_CONFIGURATION} \
     -archivePath ${__EXPORT_ARCHIVE_PATH} \
-    CFBundleVersion=${__BUNDLE_BUILD_VERSION} \
+    CFBundleVersion=${__BUNDLE_VERSION} \
     -destination generic/platform=ios \
     #CODE_SIGN_IDENTITY="${__CODE_SIGN_DEVELOPMENT}"
 
 else
-    Log "您选择了以 xcodeproj-${__BUILD_CONFIGURATION} 模式打包"
+    Log "您选择了以 xcodeproj-${__BUILD_CONFIGURATION} 模式打 -${__BUILD_METHOD}- 包"
 
     # step 1. Clean
     xcodebuild clean  -project ${__PROJECT_NAME}.xcodeproj \
@@ -249,7 +238,7 @@ else
     -scheme ${__SCHEME_NAME} \
     -configuration ${__BUILD_CONFIGURATION} \
     -archivePath ${__EXPORT_ARCHIVE_PATH} \
-    CFBundleVersion=${__BUNDLE_BUILD_VERSION} \
+    CFBundleVersion=${__BUNDLE_VERSION} \
     -destination generic/platform=ios \
     #CODE_SIGN_IDENTITY="${__CODE_SIGN_DEVELOPMENT}"
 fi
@@ -289,24 +278,15 @@ if test -f "${__EXPORT_IPA_PATH}/${__IPA_NAME}.ipa" ; then
             "http://192.168.200.108:8001/upload"
 
             Log "上传 ${__IPA_NAME}.ipa成功 🎉 🎉 🎉"
-#        else
-#            Log ""
-#            echo "${__LINE_BREAK_LEFT} 您输入 上传内测网站 参数无效!!! ${__LINE_BREAK_RIGHT}"
-#            exit 1
         fi
-
     fi
 
-    #  自动打开文件夹
-    __IS_AUTO_OPENT_FILE=true
-    if ${__IS_AUTO_OPENT_FILE} ; then
-        open ${__EXPORT_IPA_PATH}
-    fi
+    open ${__EXPORT_IPA_PATH}
 
 else
     Log "导出 ${__IPA_NAME}.ipa 包失败 😢 😢 😢"
     exit 1
 fi
 
-# 输出打包总用时
-Log "脚本打包总耗时: ${SECONDS}s"
+__END_SECONDS=`date +%s`
+Log "脚本打包总耗时: ${SECONDS}s 自动打包耗时：$((__END_SECONDS-__START_SECONDS))s"
